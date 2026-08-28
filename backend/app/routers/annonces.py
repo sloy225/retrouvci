@@ -35,22 +35,46 @@ async def lister_annonces(
     categorie: CategorieEnum | None = None,
     ville: str | None = None,
     recherche: str | None = None,
+    statut: StatutAnnonceEnum | None = None,
+    inclure_toutes: bool = False,
     page: int = Query(default=1, ge=1),
     taille_page: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Liste les annonces publiées avec filtres optionnels (catégorie, ville, mot-clé)."""
-    stmt = select(Annonce).where(Annonce.statut == StatutAnnonceEnum.PUBLIEE)
+    """
+    Liste les annonces.
+
+    Par défaut, retourne uniquement les annonces publiées.
+    Pour le dashboard admin local :
+    GET /annonces/?inclure_toutes=true
+    GET /annonces/?statut=en_attente&inclure_toutes=true
+    """
+    stmt = select(Annonce)
+
+    if inclure_toutes:
+        if statut:
+            stmt = stmt.where(Annonce.statut == statut)
+    else:
+        stmt = stmt.where(Annonce.statut == StatutAnnonceEnum.PUBLIEE)
 
     if type_annonce:
         stmt = stmt.where(Annonce.type_annonce == type_annonce)
+
     if categorie:
         stmt = stmt.where(Annonce.categorie == categorie)
+
     if ville:
         stmt = stmt.where(Annonce.ville.ilike(f"%{ville}%"))
+
     if recherche:
         motif = f"%{recherche}%"
-        stmt = stmt.where(or_(Annonce.titre.ilike(motif), Annonce.description.ilike(motif)))
+        stmt = stmt.where(
+            or_(
+                Annonce.titre.ilike(motif),
+                Annonce.description.ilike(motif),
+                Annonce.nom_personne.ilike(motif),
+            )
+        )
 
     stmt = stmt.order_by(Annonce.date_creation.desc())
     stmt = stmt.offset((page - 1) * taille_page).limit(taille_page)
