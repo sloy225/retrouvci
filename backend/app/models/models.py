@@ -51,6 +51,7 @@ class User(Base):
     ville: Mapped[str | None] = mapped_column(String(100), nullable=True)
     est_verifie: Mapped[bool] = mapped_column(Boolean, default=False)  # ex: ONG/autorité vérifiée
     est_actif: Mapped[bool] = mapped_column(Boolean, default=True)
+    est_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     date_creation: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     annonces: Mapped[list["Annonce"]] = relationship(back_populates="auteur")

@@ -7,9 +7,11 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, and_
+
 from app.core.database import get_db
-from app.models.models import Annonce, StatutAnnonceEnum, TypeAnnonceEnum, CategorieEnum
+from app.models.models import Annonce, StatutAnnonceEnum, TypeAnnonceEnum, CategorieEnum, User
 from app.schemas.schemas import AnnonceCreate, AnnonceOut, AnnonceUpdate, StatistiquesPubliques
+from app.core.dependencies import get_current_user, get_current_admin
 
 router = APIRouter(prefix="/annonces", tags=["Annonces"])
 
@@ -95,10 +97,19 @@ async def obtenir_annonce(annonce_id: uuid.UUID, db: AsyncSession = Depends(get_
 
 
 @router.patch("/{annonce_id}", response_model=AnnonceOut)
-async def modifier_annonce(annonce_id: uuid.UUID, payload: AnnonceUpdate, db: AsyncSession = Depends(get_db)):
+async def modifier_annonce(
+    annonce_id: uuid.UUID,
+    payload: AnnonceUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
     annonce = await db.get(Annonce, annonce_id)
+
     if not annonce:
-        raise HTTPException(status_code=404, detail="Annonce introuvable.")
+        raise HTTPException(
+            status_code=404,
+            detail="Annonce introuvable.",
+        )
 
     for champ, valeur in payload.model_dump(exclude_unset=True).items():
         setattr(annonce, champ, valeur)
@@ -131,6 +142,24 @@ async def statistiques_publiques(db: AsyncSession = Depends(get_db)):
         annonces_par_categorie=par_categorie,
     )
 
+@router.delete("/{annonce_id}", response_model=dict)
+async def supprimer_annonce(
+    annonce_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_admin),
+):
+    """
+    Supprime définitivement une annonce. Réservé aux administrateurs.
+    """
+    annonce = await db.get(Annonce, annonce_id)
+
+    if not annonce:
+        raise HTTPException(status_code=404, detail="Annonce introuvable.")
+
+    await db.delete(annonce)
+    await db.commit()
+
+    return {"message": "Annonce supprimée définitivement."}
 
 async def suggerer_rapprochement(annonce: Annonce, db: AsyncSession) -> list[uuid.UUID]:
     """

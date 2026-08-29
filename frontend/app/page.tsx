@@ -1,6 +1,7 @@
 "use client";
-import Link from "next/link";
+"use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type TypeAnnonce = "disparition" | "retrouve";
@@ -190,19 +191,21 @@ export default function Home() {
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-              <Link
-  href="/signaler"
-  className="rounded-2xl bg-white px-7 py-4 text-center font-bold text-orange-600 shadow-xl transition hover:scale-[1.02] hover:bg-orange-50"
->
-  🚨 Signaler une disparition
-</Link>
+              <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+  <Link
+    href="/signaler?type=disparition"
+    className="rounded-2xl bg-white px-7 py-4 text-center font-bold text-orange-600 shadow-xl transition hover:scale-[1.02] hover:bg-orange-50"
+  >
+    🚨 Signaler une disparition
+  </Link>
 
-              <Link
-  href="/retrouver"
-  className="rounded-2xl bg-slate-950 px-7 py-4 text-center font-bold text-white shadow-xl transition hover:scale-[1.02] hover:bg-slate-800"
->
-  ✅ J&apos;ai retrouvé quelque chose
-</Link>
+  <Link
+    href="/signaler?type=retrouve"
+    className="rounded-2xl bg-slate-950 px-7 py-4 text-center font-bold text-white shadow-xl transition hover:scale-[1.02] hover:bg-slate-800"
+  >
+    ✅ J&apos;ai retrouvé quelque chose
+  </Link>
+</div>
             </div>
           </div>
         </div>

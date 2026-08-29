@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Status =
   | "en_attente"
@@ -59,6 +60,7 @@ const categoryIcons: Record<string, string> = {
 };
 
 export default function AdminPage() {
+  const router = useRouter();
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState("");
@@ -100,8 +102,15 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
+    const token = localStorage.getItem("retrouvci_admin_token");
+
+    if (!token) {
+      router.replace("/admin/login");
+      return;
+    }
+
     loadAnnonces();
-  }, [selectedStatus]);
+  }, [selectedStatus, router]);
 
   async function updateStatus(id: string, statut: Status) {
     const label = statusLabels[statut].toLowerCase();
@@ -124,11 +133,18 @@ export default function AdminPage() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: `Bearer ${localStorage.getItem("retrouvci_admin_token")}`,
         },
         body: JSON.stringify({ statut }),
       });
 
       const data = await response.json();
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("retrouvci_admin_token");
+        router.replace("/admin/login");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -164,6 +180,73 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteAnnonce(id: string) {
+    const confirmed = window.confirm(
+      "Supprimer définitivement cette annonce ? Cette action est irréversible."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setUpdatingId(id);
+      setMessage("");
+      setError("");
+
+      const response = await fetch(`${API_URL}/annonces/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${localStorage.getItem("retrouvci_admin_token")}`,
+        },
+      });
+
+      const data = await response.json();
+      console.log("DELETE response:", {
+  status: response.status,
+  statusText: response.statusText,
+  data,
+});
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("retrouvci_admin_token");
+        router.replace("/admin/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data.detail === "string"
+            ? data.detail
+            : "Impossible de supprimer cette annonce."
+        );
+      }
+
+      setMessage("Annonce supprimée définitivement.");
+
+      setAnnonces((previous) =>
+        previous.filter((annonce) => annonce.id !== id)
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue pendant la suppression."
+      );
+    } finally {
+      setUpdatingId("");
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("retrouvci_admin_token");
+    router.replace("/admin/login");
+  }
+
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900">
       <header className="border-b border-slate-800 bg-slate-950 text-white">
@@ -183,12 +266,22 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <Link
-            href="/"
-            className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
-          >
-            ← Voir le site
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="hidden rounded-xl border border-slate-700 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-slate-800 sm:inline-flex"
+            >
+              ← Voir le site
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl bg-red-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-600"
+            >
+              Se déconnecter
+            </button>
+          </div>
         </div>
       </header>
 
@@ -248,6 +341,16 @@ export default function AdminPage() {
             onClick={() => setSelectedStatus("toutes")}
           />
         </div>
+
+        <p className="mt-4 text-sm font-medium text-slate-500">
+          {loading
+            ? "Chargement des annonces..."
+            : `${annonces.length} annonce(s) dans : ${
+                selectedStatus === "toutes"
+                  ? "Toutes"
+                  : statusLabels[selectedStatus]
+              }`}
+        </p>
 
         {message && (
           <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
@@ -440,6 +543,15 @@ export default function AdminPage() {
                         Republier
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      disabled={isUpdating}
+                      onClick={() => deleteAnnonce(annonce.id)}
+                      className="rounded-xl border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                    >
+                      🗑 Supprimer
+                    </button>
 
                     {isUpdating && (
                       <span className="self-center text-sm font-medium text-slate-500">

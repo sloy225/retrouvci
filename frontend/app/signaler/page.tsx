@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type TypeAnnonce = "disparition" | "retrouve";
 type Categorie =
@@ -76,8 +76,19 @@ const categories = [
 
 export default function SignalerPage() {
   const router = useRouter();
-
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  useEffect(() => {
+  const type = searchParams.get("type");
+
+  if (type === "disparition" || type === "retrouve") {
+    setFormData((previous) => ({
+      ...previous,
+      type_annonce: type,
+    }));
+  }
+}, [searchParams]);
+
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");

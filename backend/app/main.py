@@ -46,3 +46,6 @@ async def racine():
 @app.get("/sante", tags=["Santé"])
 async def verification_sante():
     return {"statut": "ok"}
+
+
+
